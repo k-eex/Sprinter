@@ -54,6 +54,7 @@
 // M190 - Wait for bed current temp to reach target temp.
 // M201 - Set max acceleration in units/s^2 for print moves (M201 X1000 Y1000)
 // M202 - Set max acceleration in units/s^2 for travel moves (M202 X1000 Y1000)
+// M203 - Set backlash compensation in number of steps (M203 X100 Y100)
 
 
 //Stepper Movement Variables
@@ -83,6 +84,7 @@ boolean acceleration_enabled = false, accelerating = false;
 unsigned long interval;
 float destination_x = 0.0, destination_y = 0.0, destination_z = 0.0, destination_e = 0.0;
 float current_x = 0.0, current_y = 0.0, current_z = 0.0, current_e = 0.0;
+unsigned long x_backlash_steps = 0, y_backlash_steps = 0;
 long x_interval, y_interval, z_interval, e_interval; // for speed delay
 float feedrate = 1500, next_feedrate, z_feedrate, saved_feedrate;
 float time_for_move;
@@ -439,6 +441,7 @@ inline bool code_seen(char code)
  //experimental feedrate calc
 float d = 0;
 float xdiff = 0, ydiff = 0, zdiff = 0, ediff = 0;
+unsigned long xblash=0,yblash=0;
 
 inline void process_commands()
 {
@@ -786,6 +789,10 @@ inline void process_commands()
         if(code_seen('Y')) y_travel_steps_per_sqr_second = code_value() * y_steps_per_unit;
         break;
       #endif
+      case 203: // M203
+        if(code_seen('X')) x_backlash_steps = code_value();
+        if(code_seen('Y')) y_backlash_steps = code_value();
+        break;
     }
     
   }
@@ -836,10 +843,14 @@ inline void get_coordinates()
 inline void prepare_move()
 {
   //Find direction
-  if(destination_x >= current_x) direction_x = 1;
-  else direction_x = 0;
-  if(destination_y >= current_y) direction_y = 1;
-  else direction_y = 0;
+  if((destination_x >= current_x) != (direction_x != 0)){
+	direction_x = !direction_x; // direction needs to be reversed
+	xblash = x_backlash_steps;
+  }else xblash=0;
+  if((destination_y >= current_y) != (direction_y != 0)){
+    direction_y = !direction_y; // direction needs to be reversed
+    yblash = y_backlash_steps;
+  }else yblash=0;
   if(destination_z >= current_z) direction_z = 1;
   else direction_z = 0;
   if(destination_e >= current_e) direction_e = 1;
@@ -867,8 +878,8 @@ inline void prepare_move()
   ydiff = (destination_y - current_y);
   zdiff = (destination_z - current_z);
   ediff = (destination_e - current_e);
-  x_steps_to_take = abs(xdiff) * x_steps_per_unit;
-  y_steps_to_take = abs(ydiff) * y_steps_per_unit;
+  x_steps_to_take = abs(xdiff) * x_steps_per_unit + xblash;
+  y_steps_to_take = abs(ydiff) * y_steps_per_unit + yblash;
   z_steps_to_take = abs(zdiff) * z_steps_per_unit;
   e_steps_to_take = abs(ediff) * e_steps_per_unit;
   if(feedrate < 10)
