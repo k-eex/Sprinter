@@ -441,7 +441,6 @@ inline bool code_seen(char code)
  //experimental feedrate calc
 float d = 0;
 float xdiff = 0, ydiff = 0, zdiff = 0, ediff = 0;
-unsigned long xblash=0,yblash=0;
 
 inline void process_commands()
 {
@@ -842,6 +841,8 @@ inline void get_coordinates()
 
 inline void prepare_move()
 {
+  unsigned long xblash=0,yblash=0;
+
   //Find direction
   if((destination_x >= current_x) != (direction_x != 0)){
 	direction_x = !direction_x; // direction needs to be reversed
